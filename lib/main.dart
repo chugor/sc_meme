@@ -64,72 +64,87 @@ class SCMemeAppState extends State<SCMemeApp> {
   }
 }
 
-class MemeListing extends ConsumerWidget {
+class MemeListing extends StatefulWidget {
   const MemeListing({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final memesAsyncValue = ref.watch(memeProvider);
+  MemeListingState createState() => MemeListingState();
+}
 
-    return memesAsyncValue.when(
-      data: (memes) {
-        if (memes.isEmpty) {
-          return const Center(child: Text('No memes available.'));
-        }
+class MemeListingState extends State<MemeListing> {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final memesAsyncValue = ref.watch(memeProvider);
 
-        return RefreshIndicator(
-          onRefresh: _refreshMemeList,
-          child: ListView.builder(
-            itemCount: memes.length,
-            itemBuilder: (context, index) {
-              final meme = memes[index];
+        return memesAsyncValue.when(
+          data: (memes) {
+            if (memes.isEmpty) {
+              return const Center(child: Text('No memes available.'));
+            }
 
-              return Dismissible(
-                key: ValueKey(meme.id),
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  color: Colors.red,
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 20.0),
-                    child: Icon(Icons.favorite, color: Colors.white),
-                  ),
-                ),
-                direction: DismissDirection.endToStart,
-                confirmDismiss: (direction) async {
-                  final bookmarksBox = Hive.box<Meme>('bookmarks');
-                  if (bookmarksBox.containsKey(meme.id)) {
-                    bookmarksBox.delete(meme.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Removed from favorites!')),
-                    );
-                  } else {
-                    bookmarksBox.put(meme.id, meme);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Added to favorites!')),
-                    );
-                  }
-                  // By returning false, the Dismissible won't remove the item
-                  return false;
+            return RefreshIndicator(
+              onRefresh: _refreshMemeList,
+              child: ListView.builder(
+                itemCount: memes.length,
+                itemBuilder: (context, index) {
+                  final meme = memes[index];
+
+                  return Dismissible(
+                    key: ValueKey(meme.id),
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      color: Colors.red,
+                      child: const Padding(
+                        padding: EdgeInsets.only(right: 20.0),
+                        child: Icon(Icons.favorite, color: Colors.white),
+                      ),
+                    ),
+                    direction: DismissDirection.endToStart,
+                    confirmDismiss: (direction) async {
+                      final bookmarksBox = Hive.box<Meme>('bookmarks');
+                      if (bookmarksBox.containsKey(meme.id)) {
+                        bookmarksBox.delete(meme.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Removed from favorites!')),
+                        );
+                      } else {
+                        bookmarksBox.put(meme.id, meme);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Added to favorites!')),
+                        );
+                      }
+
+                      // Notify the UI to rebuild
+                      setState(() {});
+
+                      // By returning false, the Dismissible won't remove the item
+                      return false;
+                    },
+                    child: ListTile(
+                      leading: Image.network(meme.imageUrl),
+                      title: Text(meme.name),
+                      trailing: Icon(
+                        Hive.box<Meme>('bookmarks').containsKey(meme.id)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                      ),
+                      onTap: () {
+                        // Optional: Do something when the meme is tapped
+                      },
+                    ),
+                  );
                 },
-                child: ListTile(
-                  leading: Image.network(meme.imageUrl),
-                  title: Text(meme.name),
-                  trailing: Icon(
-                    Hive.box<Meme>('bookmarks').containsKey(meme.id)
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                  ),
-                  onTap: () {
-                    // Optional: Do something when the meme is tapped
-                  },
-                ),
-              );
-            },
-          ),
+              ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) =>
+              Center(child: Text('Error loading memes: $error')),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error loading memes: $error')),
     );
   }
 
@@ -147,9 +162,6 @@ class FavoriteMemes extends StatelessWidget {
     final bookmarkedMemes = bookmarksBox.values.toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Favorite Memes'),
-      ),
       body: bookmarkedMemes.isEmpty
           ? const Center(child: Text('No favorite memes yet.'))
           : ListView.builder(
