@@ -210,10 +210,13 @@ class FavoriteMemes extends StatefulWidget {
 
 class _FavoriteMemesState extends State<FavoriteMemes> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
   final int itemsPerPage = 10;
   int currentPage = 0;
   bool isLoading = false;
+  bool isSearching = false;
   List<Meme> currentMemes = [];
+  List<Meme> filteredMemes = [];
 
   @override
   void initState() {
@@ -235,7 +238,6 @@ class _FavoriteMemesState extends State<FavoriteMemes> {
     final totalMemes = bookmarksBox.values.toList();
 
     if (currentPage * itemsPerPage < totalMemes.length) {
-      // This will set isLoading to true and rebuild the widget to show the spinner.
       setState(() {
         isLoading = true;
       });
@@ -247,8 +249,9 @@ class _FavoriteMemesState extends State<FavoriteMemes> {
             .toList();
         setState(() {
           currentMemes.addAll(newMemes);
+          filteredMemes.addAll(newMemes);
           currentPage++;
-          isLoading = false; // Once data is loaded, set isLoading to false.
+          isLoading = false;
         });
       });
     }
@@ -262,58 +265,124 @@ class _FavoriteMemesState extends State<FavoriteMemes> {
     _loadMoreMemes();
   }
 
+  _performSearch(String searchText) {
+    if (searchText.isEmpty) {
+      setState(() {
+        filteredMemes = [];
+      });
+    } else {
+      setState(() {
+        filteredMemes = currentMemes.where((meme) {
+          return meme.name.toLowerCase().contains(searchText.toLowerCase());
+        }).toList();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _refreshFavoriteMemes,
-        child: ListView.builder(
-          controller: _scrollController,
-          itemCount: currentMemes.length + (isLoading ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (index == currentMemes.length) {
-              return Center(child: CircularProgressIndicator());
-            }
-            final meme = currentMemes[index];
-            return Dismissible(
-              key: ValueKey(meme.id),
-              background: Container(
-                alignment: Alignment.centerRight,
-                color: Colors.red,
-                child: const Padding(
-                  padding: EdgeInsets.only(right: 20.0),
-                  child: Icon(Icons.delete, color: Colors.white),
-                ),
-              ),
-              direction: DismissDirection.endToStart,
-              onDismissed: (direction) {
-                Hive.box<Meme>('bookmarks').delete(meme.id);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Removed from favorites!')),
-                );
-                setState(() {
-                  currentMemes.removeAt(index);
-                });
-              },
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: ListTile(
-                  leading: Image.network(meme.imageUrl),
-                  title: Text(meme.name),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.favorite),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Row(
+              children: [
+                if (isSearching)
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) => _performSearch(value),
+                      onSubmitted: (value) => _performSearch(value),
+                      decoration: InputDecoration(
+                        hintText: 'Search...',
+                      ),
+                    ),
+                  )
+                else
+                  const Text('Search'),
+                SizedBox(width: 10),
+                if (isSearching)
+                  TextButton(
                     onPressed: () {
-                      Hive.box<Meme>('bookmarks').delete(meme.id);
                       setState(() {
-                        currentMemes.removeAt(index);
+                        isSearching = false;
+                        _searchController.clear();
+                        filteredMemes = currentMemes;
+                      });
+                    },
+                    child: Text('Cancel'),
+                  )
+                else
+                  IconButton(
+                    icon: Icon(Icons.search),
+                    onPressed: () {
+                      setState(() {
+                        isSearching = true;
+                        filteredMemes =
+                            []; // Clear the filtered memes when starting a search
                       });
                     },
                   ),
-                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refreshFavoriteMemes,
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: filteredMemes.length + (isLoading ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == filteredMemes.length) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  final meme = filteredMemes[index];
+                  return Dismissible(
+                    key: ValueKey(meme.id),
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      color: Colors.red,
+                      child: const Padding(
+                        padding: EdgeInsets.only(right: 20.0),
+                        child: Icon(Icons.delete, color: Colors.white),
+                      ),
+                    ),
+                    direction: DismissDirection.endToStart,
+                    onDismissed: (direction) {
+                      Hive.box<Meme>('bookmarks').delete(meme.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Removed from favorites!')),
+                      );
+                      setState(() {
+                        filteredMemes.removeAt(index);
+                        currentMemes.removeWhere((m) => m.id == meme.id);
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: ListTile(
+                        leading: Image.network(meme.imageUrl),
+                        title: Text(meme.name),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.favorite),
+                          onPressed: () {
+                            Hive.box<Meme>('bookmarks').delete(meme.id);
+                            setState(() {
+                              filteredMemes.removeAt(index);
+                              currentMemes.removeWhere((m) => m.id == meme.id);
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
