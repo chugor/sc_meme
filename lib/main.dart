@@ -72,6 +72,48 @@ class MemeListing extends StatefulWidget {
 }
 
 class MemeListingState extends State<MemeListing> {
+  List<Meme> allMemes = [];
+  List<Meme> currentMemes = [];
+  ScrollController _scrollController = ScrollController();
+  bool isLoading = false;
+  final int itemsPerPage = 10;
+  int currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent) {
+        _loadMoreMemes();
+      }
+    });
+  }
+
+  _loadMoreMemes() {
+    if (!isLoading && (currentPage + 1) * itemsPerPage < allMemes.length) {
+      setState(() {
+        isLoading = true;
+      });
+
+      Future.delayed(Duration(seconds: 2), () {
+        setState(() {
+          currentMemes.addAll(allMemes
+              .skip(currentPage * itemsPerPage)
+              .take(itemsPerPage)
+              .toList());
+          currentPage++;
+          isLoading = false;
+        });
+      });
+    }
+  }
+
+  Future<void> _refreshMemeList() async {
+    // Logic to refresh the memes, probably calling the memeProvider again
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer(
@@ -80,16 +122,23 @@ class MemeListingState extends State<MemeListing> {
 
         return memesAsyncValue.when(
           data: (memes) {
-            if (memes.isEmpty) {
-              return const Center(child: Text('No memes available.'));
+            if (allMemes.isEmpty) {
+              allMemes = memes;
+              if (currentMemes.isEmpty) {
+                Future.microtask(() => _loadMoreMemes());
+              }
             }
 
             return RefreshIndicator(
               onRefresh: _refreshMemeList,
               child: ListView.builder(
-                itemCount: memes.length,
+                controller: _scrollController,
+                itemCount: currentMemes.length + (isLoading ? 1 : 0),
                 itemBuilder: (context, index) {
-                  final meme = memes[index];
+                  if (index == currentMemes.length) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  final meme = currentMemes[index];
 
                   return Dismissible(
                     key: ValueKey(meme.id),
@@ -123,17 +172,20 @@ class MemeListingState extends State<MemeListing> {
                       // By returning false, the Dismissible won't remove the item
                       return false;
                     },
-                    child: ListTile(
-                      leading: Image.network(meme.imageUrl),
-                      title: Text(meme.name),
-                      trailing: Icon(
-                        Hive.box<Meme>('bookmarks').containsKey(meme.id)
-                            ? Icons.favorite
-                            : Icons.favorite_border,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: ListTile(
+                        leading: Image.network(meme.imageUrl),
+                        title: Text(meme.name),
+                        trailing: Icon(
+                          Hive.box<Meme>('bookmarks').containsKey(meme.id)
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                        ),
+                        onTap: () {
+                          // Optional: Do something when the meme is tapped
+                        },
                       ),
-                      onTap: () {
-                        // Optional: Do something when the meme is tapped
-                      },
                     ),
                   );
                 },
@@ -146,10 +198,6 @@ class MemeListingState extends State<MemeListing> {
         );
       },
     );
-  }
-
-  Future<void> _refreshMemeList() async {
-    // Logic to refresh the memes, probably calling the memeProvider again
   }
 }
 
