@@ -201,53 +201,120 @@ class MemeListingState extends State<MemeListing> {
   }
 }
 
-class FavoriteMemes extends StatelessWidget {
+class FavoriteMemes extends StatefulWidget {
   const FavoriteMemes({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final bookmarksBox = Hive.box<Meme>('bookmarks');
-    final bookmarkedMemes = bookmarksBox.values.toList();
+  _FavoriteMemesState createState() => _FavoriteMemesState();
+}
 
+class _FavoriteMemesState extends State<FavoriteMemes> {
+  final ScrollController _scrollController = ScrollController();
+  final int itemsPerPage = 10;
+  int currentPage = 0;
+  bool isLoading = false;
+  List<Meme> currentMemes = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+              _scrollController.position.maxScrollExtent &&
+          !isLoading) {
+        _loadMoreMemes();
+      }
+    });
+
+    _loadMoreMemes();
+  }
+
+  _loadMoreMemes() {
+    final bookmarksBox = Hive.box<Meme>('bookmarks');
+    final totalMemes = bookmarksBox.values.toList();
+
+    if (currentPage * itemsPerPage < totalMemes.length) {
+      // This will set isLoading to true and rebuild the widget to show the spinner.
+      setState(() {
+        isLoading = true;
+      });
+
+      Future.delayed(Duration(seconds: 2), () {
+        List<Meme> newMemes = totalMemes
+            .skip(currentPage * itemsPerPage)
+            .take(itemsPerPage)
+            .toList();
+        setState(() {
+          currentMemes.addAll(newMemes);
+          currentPage++;
+          isLoading = false; // Once data is loaded, set isLoading to false.
+        });
+      });
+    }
+  }
+
+  Future<void> _refreshFavoriteMemes() async {
+    setState(() {
+      currentMemes.clear();
+      currentPage = 0;
+    });
+    _loadMoreMemes();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: bookmarkedMemes.isEmpty
-          ? const Center(child: Text('No favorite memes yet.'))
-          : ListView.builder(
-              itemCount: bookmarkedMemes.length,
-              itemBuilder: (context, index) {
-                final meme = bookmarkedMemes[index];
-                return Dismissible(
-                  key: ValueKey(meme.id),
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    color: Colors.red,
-                    child: const Padding(
-                      padding: EdgeInsets.only(right: 20.0),
-                      child: Icon(Icons.delete, color: Colors.white),
-                    ),
-                  ),
-                  direction: DismissDirection.endToStart,
-                  onDismissed: (direction) {
-                    bookmarksBox.delete(meme.id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Removed from favorites!')),
-                    );
-                  },
-                  child: ListTile(
-                    leading: Image.network(meme.imageUrl),
-                    title: Text(meme.name),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.favorite),
-                      onPressed: () {
-                        bookmarksBox.delete(meme.id);
-                        // To force a UI refresh, consider using a StatefulWidget
-                        // or a more advanced state management solution.
-                      },
-                    ),
-                  ),
+      body: RefreshIndicator(
+        onRefresh: _refreshFavoriteMemes,
+        child: ListView.builder(
+          controller: _scrollController,
+          itemCount: currentMemes.length + (isLoading ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index == currentMemes.length) {
+              return Center(child: CircularProgressIndicator());
+            }
+            final meme = currentMemes[index];
+            return Dismissible(
+              key: ValueKey(meme.id),
+              background: Container(
+                alignment: Alignment.centerRight,
+                color: Colors.red,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 20.0),
+                  child: Icon(Icons.delete, color: Colors.white),
+                ),
+              ),
+              direction: DismissDirection.endToStart,
+              onDismissed: (direction) {
+                Hive.box<Meme>('bookmarks').delete(meme.id);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Removed from favorites!')),
                 );
+                setState(() {
+                  currentMemes.removeAt(index);
+                });
               },
-            ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: ListTile(
+                  leading: Image.network(meme.imageUrl),
+                  title: Text(meme.name),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.favorite),
+                    onPressed: () {
+                      Hive.box<Meme>('bookmarks').delete(meme.id);
+                      setState(() {
+                        currentMemes.removeAt(index);
+                      });
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
