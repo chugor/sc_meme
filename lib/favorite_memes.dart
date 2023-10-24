@@ -100,20 +100,21 @@ class FavoriteMemesState extends State<FavoriteMemes> {
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (isSearching)
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (value) => _performSearch(value),
-                      onSubmitted: (value) => _performSearch(value),
-                      decoration: const InputDecoration(
-                        hintText: 'Search...',
-                      ),
-                    ),
-                  )
-                else
-                  const Text('Search'),
+                Expanded(
+                  flex: 1,
+                  child: isSearching
+                      ? TextField(
+                          controller: _searchController,
+                          onChanged: (value) => _performSearch(value),
+                          onSubmitted: (value) => _performSearch(value),
+                          decoration: const InputDecoration(
+                            hintText: 'Search...',
+                          ),
+                        )
+                      : const Text('Search'),
+                ),
                 const SizedBox(width: 10),
                 if (isSearching)
                   TextButton(

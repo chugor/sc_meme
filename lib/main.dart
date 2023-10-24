@@ -40,7 +40,11 @@ class SCMemeAppState extends State<SCMemeApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue),
       home: Scaffold(
-        appBar: AppBar(title: const Text('SC Memes')),
+        appBar: AppBar(
+          title: _currentIndex == 0
+              ? const Text('Meme Listing')
+              : const Text('Favorites'),
+        ),
         body: _tabs[_currentIndex],
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
