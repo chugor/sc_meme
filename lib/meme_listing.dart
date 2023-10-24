@@ -86,7 +86,7 @@ class MemeListingState extends State<MemeListing> {
             }
 
             return allMemes.isEmpty && !isLoading
-                ? Center(
+                ? const Center(
                     child: Text('No memes found'),
                   )
                 : RefreshIndicator(

@@ -142,7 +142,7 @@ class FavoriteMemesState extends State<FavoriteMemes> {
           ),
           Expanded(
             child: filteredMemes.isEmpty && !isLoading
-                ? Center(
+                ? const Center(
                     child: Text('No memes found'),
                   )
                 : RefreshIndicator(
