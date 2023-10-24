@@ -64,6 +64,49 @@ class SCMemeAppState extends State<SCMemeApp> {
   }
 }
 
+class MemeDismissible extends StatelessWidget {
+  final Meme meme;
+  final bool isFavorite;
+  final Function(Meme meme) onDismiss;
+  final Function(Meme meme) onTap;
+
+  MemeDismissible({
+    required this.meme,
+    required this.isFavorite,
+    required this.onDismiss,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: ValueKey(meme.id),
+      background: Container(
+        alignment: Alignment.centerRight,
+        color: Colors.red,
+        child: Padding(
+          padding: EdgeInsets.only(right: 20.0),
+          child: Icon(isFavorite ? Icons.delete : Icons.favorite,
+              color: Colors.white),
+        ),
+      ),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) => onDismiss(meme),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: ListTile(
+          leading: Image.network(meme.imageUrl),
+          title: Text(meme.name),
+          trailing: IconButton(
+            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+            onPressed: () => onTap(meme),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class MemeListing extends StatefulWidget {
   const MemeListing({Key? key}) : super(key: key);
 
@@ -140,54 +183,35 @@ class MemeListingState extends State<MemeListing> {
                   }
                   final meme = currentMemes[index];
 
-                  return Dismissible(
-                    key: ValueKey(meme.id),
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      color: Colors.red,
-                      child: const Padding(
-                        padding: EdgeInsets.only(right: 20.0),
-                        child: Icon(Icons.favorite, color: Colors.white),
-                      ),
-                    ),
-                    direction: DismissDirection.endToStart,
-                    confirmDismiss: (direction) async {
-                      final bookmarksBox = Hive.box<Meme>('bookmarks');
-                      if (bookmarksBox.containsKey(meme.id)) {
-                        bookmarksBox.delete(meme.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Removed from favorites!')),
-                        );
-                      } else {
-                        bookmarksBox.put(meme.id, meme);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Added to favorites!')),
-                        );
-                      }
+                  return MemeDismissible(
+                      meme: meme,
+                      isFavorite:
+                          Hive.box<Meme>('bookmarks').containsKey(meme.id),
+                      onDismiss: (direction) async {
+                        final bookmarksBox = Hive.box<Meme>('bookmarks');
+                        if (bookmarksBox.containsKey(meme.id)) {
+                          bookmarksBox.delete(meme.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Removed from favorites!')),
+                          );
+                        } else {
+                          bookmarksBox.put(meme.id, meme);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Added to favorites!')),
+                          );
+                        }
 
-                      // Notify the UI to rebuild
-                      setState(() {});
+                        // Notify the UI to rebuild
+                        setState(() {});
 
-                      // By returning false, the Dismissible won't remove the item
-                      return false;
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: ListTile(
-                        leading: Image.network(meme.imageUrl),
-                        title: Text(meme.name),
-                        trailing: Icon(
-                          Hive.box<Meme>('bookmarks').containsKey(meme.id)
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                        ),
-                        onTap: () {
-                          // Optional: Do something when the meme is tapped
-                        },
-                      ),
-                    ),
-                  );
+                        // By returning false, the Dismissible won't remove the item
+                        return false;
+                      },
+                      onTap: (meme) {
+                        // Optional: Do something when the meme is tapped
+                      });
                 },
               ),
             );
@@ -205,10 +229,10 @@ class FavoriteMemes extends StatefulWidget {
   const FavoriteMemes({Key? key}) : super(key: key);
 
   @override
-  _FavoriteMemesState createState() => _FavoriteMemesState();
+  FavoriteMemesState createState() => FavoriteMemesState();
 }
 
-class _FavoriteMemesState extends State<FavoriteMemes> {
+class FavoriteMemesState extends State<FavoriteMemes> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final int itemsPerPage = 10;
@@ -338,46 +362,25 @@ class _FavoriteMemesState extends State<FavoriteMemes> {
                     return Center(child: CircularProgressIndicator());
                   }
                   final meme = filteredMemes[index];
-                  return Dismissible(
-                    key: ValueKey(meme.id),
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      color: Colors.red,
-                      child: const Padding(
-                        padding: EdgeInsets.only(right: 20.0),
-                        child: Icon(Icons.delete, color: Colors.white),
-                      ),
-                    ),
-                    direction: DismissDirection.endToStart,
-                    onDismissed: (direction) {
-                      Hive.box<Meme>('bookmarks').delete(meme.id);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Removed from favorites!')),
-                      );
-                      setState(() {
-                        filteredMemes.removeAt(index);
-                        currentMemes.removeWhere((m) => m.id == meme.id);
+
+                  return MemeDismissible(
+                      meme: meme,
+                      isFavorite:
+                          Hive.box<Meme>('bookmarks').containsKey(meme.id),
+                      onDismiss: (direction) async {
+                        Hive.box<Meme>('bookmarks').delete(meme.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Removed from favorites!')),
+                        );
+                        setState(() {
+                          filteredMemes.removeAt(index);
+                          currentMemes.removeWhere((m) => m.id == meme.id);
+                        });
+                      },
+                      onTap: (meme) {
+                        // Optional: Do something when the meme is tapped
                       });
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: ListTile(
-                        leading: Image.network(meme.imageUrl),
-                        title: Text(meme.name),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.favorite),
-                          onPressed: () {
-                            Hive.box<Meme>('bookmarks').delete(meme.id);
-                            setState(() {
-                              filteredMemes.removeAt(index);
-                              currentMemes.removeWhere((m) => m.id == meme.id);
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  );
                 },
               ),
             ),
