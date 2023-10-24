@@ -94,10 +94,26 @@ class MemeDismissible extends StatelessWidget {
       direction: DismissDirection.endToStart,
       confirmDismiss: (direction) => onDismiss(meme),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        padding: const EdgeInsets.symmetric(vertical: 32.0),
         child: ListTile(
-          leading: Image.network(meme.imageUrl),
-          title: Text(meme.name),
+          visualDensity: const VisualDensity(vertical: 4.0),
+          leading: AspectRatio(
+            aspectRatio: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8.0),
+              child: Image.network(
+                meme.imageUrl,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          title: Text(
+            meme.name,
+            style: const TextStyle(
+              fontSize: 18.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           trailing: IconButton(
             icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
             onPressed: () => onTap(meme),
@@ -154,6 +170,21 @@ class MemeListingState extends State<MemeListing> {
     }
   }
 
+  _changeFavorite(Meme meme) {
+    final bookmarksBox = Hive.box<Meme>('bookmarks');
+    if (bookmarksBox.containsKey(meme.id)) {
+      bookmarksBox.delete(meme.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Removed from favorites!')),
+      );
+    } else {
+      bookmarksBox.put(meme.id, meme);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Added to favorites!')),
+      );
+    }
+  }
+
   Future<void> _refreshMemeList() async {
     // Logic to refresh the memes, probably calling the memeProvider again
   }
@@ -189,20 +220,7 @@ class MemeListingState extends State<MemeListing> {
                       isFavorite:
                           Hive.box<Meme>('bookmarks').containsKey(meme.id),
                       onDismiss: (direction) async {
-                        final bookmarksBox = Hive.box<Meme>('bookmarks');
-                        if (bookmarksBox.containsKey(meme.id)) {
-                          bookmarksBox.delete(meme.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Removed from favorites!')),
-                          );
-                        } else {
-                          bookmarksBox.put(meme.id, meme);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Added to favorites!')),
-                          );
-                        }
+                        _changeFavorite(meme);
 
                         // Notify the UI to rebuild
                         setState(() {});
@@ -212,6 +230,10 @@ class MemeListingState extends State<MemeListing> {
                       },
                       onTap: (meme) {
                         // Optional: Do something when the meme is tapped
+                        _changeFavorite(meme);
+
+                        // Notify the UI to rebuild
+                        setState(() {});
                       });
                 },
               ),
@@ -304,6 +326,17 @@ class FavoriteMemesState extends State<FavoriteMemes> {
     }
   }
 
+  _changeFavorite(Meme meme, int index) {
+    Hive.box<Meme>('bookmarks').delete(meme.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Removed from favorites!')),
+    );
+    setState(() {
+      filteredMemes.removeAt(index);
+      currentMemes.removeWhere((m) => m.id == meme.id);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -369,18 +402,10 @@ class FavoriteMemesState extends State<FavoriteMemes> {
                       isFavorite:
                           Hive.box<Meme>('bookmarks').containsKey(meme.id),
                       onDismiss: (direction) async {
-                        Hive.box<Meme>('bookmarks').delete(meme.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Removed from favorites!')),
-                        );
-                        setState(() {
-                          filteredMemes.removeAt(index);
-                          currentMemes.removeWhere((m) => m.id == meme.id);
-                        });
+                        _changeFavorite(meme, index);
                       },
                       onTap: (meme) {
-                        // Optional: Do something when the meme is tapped
+                        _changeFavorite(meme, index);
                       });
                 },
               ),
