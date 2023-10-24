@@ -70,7 +70,8 @@ class MemeDismissible extends StatelessWidget {
   final Function(Meme meme) onDismiss;
   final Function(Meme meme) onTap;
 
-  MemeDismissible({
+  const MemeDismissible({
+    super.key,
     required this.meme,
     required this.isFavorite,
     required this.onDismiss,
@@ -85,7 +86,7 @@ class MemeDismissible extends StatelessWidget {
         alignment: Alignment.centerRight,
         color: Colors.red,
         child: Padding(
-          padding: EdgeInsets.only(right: 20.0),
+          padding: const EdgeInsets.only(right: 20.0),
           child: Icon(isFavorite ? Icons.delete : Icons.favorite,
               color: Colors.white),
         ),
@@ -93,7 +94,7 @@ class MemeDismissible extends StatelessWidget {
       direction: DismissDirection.endToStart,
       confirmDismiss: (direction) => onDismiss(meme),
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
         child: ListTile(
           leading: Image.network(meme.imageUrl),
           title: Text(meme.name),
@@ -117,7 +118,7 @@ class MemeListing extends StatefulWidget {
 class MemeListingState extends State<MemeListing> {
   List<Meme> allMemes = [];
   List<Meme> currentMemes = [];
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   bool isLoading = false;
   final int itemsPerPage = 10;
   int currentPage = 0;
@@ -140,7 +141,7 @@ class MemeListingState extends State<MemeListing> {
         isLoading = true;
       });
 
-      Future.delayed(Duration(seconds: 2), () {
+      Future.delayed(const Duration(seconds: 2), () {
         setState(() {
           currentMemes.addAll(allMemes
               .skip(currentPage * itemsPerPage)
@@ -179,7 +180,7 @@ class MemeListingState extends State<MemeListing> {
                 itemCount: currentMemes.length + (isLoading ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == currentMemes.length) {
-                    return Center(child: CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator());
                   }
                   final meme = currentMemes[index];
 
@@ -266,7 +267,7 @@ class FavoriteMemesState extends State<FavoriteMemes> {
         isLoading = true;
       });
 
-      Future.delayed(Duration(seconds: 2), () {
+      Future.delayed(const Duration(seconds: 2), () {
         List<Meme> newMemes = totalMemes
             .skip(currentPage * itemsPerPage)
             .take(itemsPerPage)
@@ -318,14 +319,14 @@ class FavoriteMemesState extends State<FavoriteMemes> {
                       controller: _searchController,
                       onChanged: (value) => _performSearch(value),
                       onSubmitted: (value) => _performSearch(value),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'Search...',
                       ),
                     ),
                   )
                 else
                   const Text('Search'),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 if (isSearching)
                   TextButton(
                     onPressed: () {
@@ -335,11 +336,11 @@ class FavoriteMemesState extends State<FavoriteMemes> {
                         filteredMemes = currentMemes;
                       });
                     },
-                    child: Text('Cancel'),
+                    child: const Text('Cancel'),
                   )
                 else
                   IconButton(
-                    icon: Icon(Icons.search),
+                    icon: const Icon(Icons.search),
                     onPressed: () {
                       setState(() {
                         isSearching = true;
@@ -359,7 +360,7 @@ class FavoriteMemesState extends State<FavoriteMemes> {
                 itemCount: filteredMemes.length + (isLoading ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == filteredMemes.length) {
-                    return Center(child: CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator());
                   }
                   final meme = filteredMemes[index];
 
