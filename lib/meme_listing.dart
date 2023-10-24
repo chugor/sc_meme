@@ -85,40 +85,45 @@ class MemeListingState extends State<MemeListing> {
               }
             }
 
-            return RefreshIndicator(
-              onRefresh: _refreshMemeList,
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: currentMemes.length + (isLoading ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == currentMemes.length) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final meme = currentMemes[index];
+            return allMemes.isEmpty && !isLoading
+                ? Center(
+                    child: Text('No memes found'),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshMemeList,
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: currentMemes.length + (isLoading ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == currentMemes.length) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        final meme = currentMemes[index];
 
-                  return MemeDismissible(
-                      meme: meme,
-                      isFavorite:
-                          Hive.box<Meme>('bookmarks').containsKey(meme.id),
-                      onDismiss: (direction) async {
-                        _changeFavorite(meme);
+                        return MemeDismissible(
+                            meme: meme,
+                            isFavorite: Hive.box<Meme>('bookmarks')
+                                .containsKey(meme.id),
+                            onDismiss: (direction) async {
+                              _changeFavorite(meme);
 
-                        // Notify the UI to rebuild
-                        setState(() {});
+                              // Notify the UI to rebuild
+                              setState(() {});
 
-                        // By returning false, the Dismissible won't remove the item
-                        return false;
+                              // By returning false, the Dismissible won't remove the item
+                              return false;
+                            },
+                            onTap: (meme) {
+                              // Optional: Do something when the meme is tapped
+                              _changeFavorite(meme);
+
+                              // Notify the UI to rebuild
+                              setState(() {});
+                            });
                       },
-                      onTap: (meme) {
-                        // Optional: Do something when the meme is tapped
-                        _changeFavorite(meme);
-
-                        // Notify the UI to rebuild
-                        setState(() {});
-                      });
-                },
-              ),
-            );
+                    ),
+                  );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) =>

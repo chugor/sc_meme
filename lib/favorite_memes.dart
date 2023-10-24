@@ -141,30 +141,35 @@ class FavoriteMemesState extends State<FavoriteMemes> {
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshFavoriteMemes,
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: filteredMemes.length + (isLoading ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == filteredMemes.length) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final meme = filteredMemes[index];
+            child: filteredMemes.isEmpty && !isLoading
+                ? Center(
+                    child: Text('No memes found'),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshFavoriteMemes,
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: filteredMemes.length + (isLoading ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == filteredMemes.length) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        final meme = filteredMemes[index];
 
-                  return MemeDismissible(
-                      meme: meme,
-                      isFavorite:
-                          Hive.box<Meme>('bookmarks').containsKey(meme.id),
-                      onDismiss: (direction) async {
-                        _changeFavorite(meme, index);
+                        return MemeDismissible(
+                            meme: meme,
+                            isFavorite: Hive.box<Meme>('bookmarks')
+                                .containsKey(meme.id),
+                            onDismiss: (direction) async {
+                              _changeFavorite(meme, index);
+                            },
+                            onTap: (meme) {
+                              _changeFavorite(meme, index);
+                            });
                       },
-                      onTap: (meme) {
-                        _changeFavorite(meme, index);
-                      });
-                },
-              ),
-            ),
+                    ),
+                  ),
           ),
         ],
       ),
